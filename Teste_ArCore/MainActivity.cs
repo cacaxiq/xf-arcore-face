@@ -42,14 +42,15 @@ namespace Teste_ArCore
             surfaceView = FindViewById<GLSurfaceView>(Resource.Id.surfaceview);
             mDisplayRotationHelper = new DisplayRotationHelper(this);
 
-
+            session = new Session(this, new List<Session.Feature> { Session.Feature.FrontCamera });
+            ConfigureSession();
 
             // Set up renderer.
             surfaceView.PreserveEGLContextOnPause = true;
             surfaceView.SetEGLContextClientVersion(2);
             surfaceView.SetEGLConfigChooser(8, 8, 8, 8, 16, 0); // Alpha used for plane blending.
             surfaceView.SetRenderer(this);
-            surfaceView.RenderMode = Rendermode.WhenDirty;
+            surfaceView.RenderMode = Rendermode.Continuously;
             surfaceView.SetWillNotDraw(false);
 
             installRequested = false;
@@ -92,8 +93,8 @@ namespace Teste_ArCore
 
                     try
                     {
-                        session = new Session(Android.App.Application.Context);
-                        ConfigureSession();
+                    
+                        session.Resume();
                     }
                     catch (UnavailableArcoreNotInstalledException e)
                     {
@@ -119,7 +120,6 @@ namespace Teste_ArCore
                     if (message != null)
                     {
                         Toast.MakeText(this, message, ToastLength.Long).Show();
-                        return;
                     }
                 }
 
@@ -182,10 +182,6 @@ namespace Teste_ArCore
                 Frame frame = session.Update();
                 Camera camera = frame.Camera;
 
-                // If not tracking, don't draw 3d objects.
-                // if (camera.TrackingState == TrackingState.Paused)
-                //   return;
-
                 float[] projectionMatrix = new float[16];
                 camera.GetProjectionMatrix(projectionMatrix, 0, 0.1f, 100.0f);
 
@@ -229,9 +225,6 @@ namespace Teste_ArCore
         public void OnSurfaceCreated(IGL10 gl, Javax.Microedition.Khronos.Egl.EGLConfig config)
         {
             GLES20.GlClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
-            if (session != null)
-                session.SetCameraTextureName(1);
 
             try
             {

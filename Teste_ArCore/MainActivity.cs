@@ -42,48 +42,15 @@ namespace Teste_ArCore
             surfaceView = FindViewById<GLSurfaceView>(Resource.Id.surfaceview);
             mDisplayRotationHelper = new DisplayRotationHelper(this);
 
-            Java.Lang.Exception exception = null;
-            string message = null;
 
-            try
-            {
-                session = new Session(Android.App.Application.Context);
-            }
-            catch (UnavailableArcoreNotInstalledException e)
-            {
-                message = "Please install ARCore";
-                exception = e;
-            }
-            catch (UnavailableApkTooOldException e)
-            {
-                message = "Please update ARCore";
-                exception = e;
-            }
-            catch (UnavailableSdkTooOldException e)
-            {
-                message = "Please update this app";
-                exception = e;
-            }
-            catch (Java.Lang.Exception e)
-            {
-                exception = e;
-                message = e.GetBaseException().Message;
-            }
-
-            if (message != null)
-            {
-                Toast.MakeText(this, message, ToastLength.Long).Show();
-                return;
-            }
-
-            ConfigureSession();
 
             // Set up renderer.
             surfaceView.PreserveEGLContextOnPause = true;
             surfaceView.SetEGLContextClientVersion(2);
             surfaceView.SetEGLConfigChooser(8, 8, 8, 8, 16, 0); // Alpha used for plane blending.
             surfaceView.SetRenderer(this);
-            surfaceView.RenderMode = Rendermode.Continuously;
+            surfaceView.RenderMode = Rendermode.WhenDirty;
+            surfaceView.SetWillNotDraw(false);
 
             installRequested = false;
         }
@@ -118,10 +85,46 @@ namespace Teste_ArCore
             // permission on Android M and above, now is a good time to ask the user for it.
             if (ContextCompat.CheckSelfPermission(this, Android.Manifest.Permission.Camera) == Android.Content.PM.Permission.Granted)
             {
-                if (session != null)
+                if (session == null)
                 {
-                    session.Resume();
+                    Java.Lang.Exception exception = null;
+                    string message = null;
+
+                    try
+                    {
+                        session = new Session(Android.App.Application.Context);
+                        ConfigureSession();
+                    }
+                    catch (UnavailableArcoreNotInstalledException e)
+                    {
+                        message = "Please install ARCore";
+                        exception = e;
+                    }
+                    catch (UnavailableApkTooOldException e)
+                    {
+                        message = "Please update ARCore";
+                        exception = e;
+                    }
+                    catch (UnavailableSdkTooOldException e)
+                    {
+                        message = "Please update this app";
+                        exception = e;
+                    }
+                    catch (Java.Lang.Exception e)
+                    {
+                        exception = e;
+                        message = e.GetBaseException().Message;
+                    }
+
+                    if (message != null)
+                    {
+                        Toast.MakeText(this, message, ToastLength.Long).Show();
+                        return;
+                    }
                 }
+
+                if (session != null)
+                    session.Resume();
 
                 surfaceView.OnResume();
                 mDisplayRotationHelper.OnResume();

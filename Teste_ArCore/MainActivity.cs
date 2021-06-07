@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Android.App;
+using Android.Hardware.Camera2;
 using Android.Opengl;
 using Android.OS;
 using Android.Util;
@@ -45,7 +47,7 @@ namespace Teste_ArCore
 
             try
             {
-                session = new Session(/*context=*/this, new List<Session.Feature> { Session.Feature.FrontCamera });
+                session = new Session(Android.App.Application.Context);
             }
             catch (UnavailableArcoreNotInstalledException e)
             {
@@ -74,18 +76,7 @@ namespace Teste_ArCore
                 return;
             }
 
-            // Create default config, check is supported, create session from that config.
-            var config = new Google.AR.Core.Config(session);
-            if (!session.IsSupported(config))
-            {
-                Toast.MakeText(this, "This device does not support AR", ToastLength.Long).Show();
-                Finish();
-                return;
-            }
-
-            config.SetAugmentedFaceMode(AugmentedFaceMode.Mesh3d);
-
-            session.Configure(config);
+            ConfigureSession();
 
             // Set up renderer.
             surfaceView.PreserveEGLContextOnPause = true;
@@ -129,7 +120,6 @@ namespace Teste_ArCore
             {
                 if (session != null)
                 {
-                    // Note that order matters - see the note in onPause(), the reverse applies here.
                     session.Resume();
                 }
 
@@ -159,13 +149,13 @@ namespace Teste_ArCore
 
         protected override void OnDestroy()
         {
+            base.OnDestroy();
             if (session != null)
             {
                 session.Close();
                 session = null;
             }
 
-            base.OnDestroy();
         }
 
         public void OnDrawFrame(IGL10 gl)
@@ -181,6 +171,8 @@ namespace Teste_ArCore
 
             mDisplayRotationHelper.UpdateSessionIfNeeded(session);
 
+            session.SetCameraTextureName(-1);
+
             try
             {
 
@@ -188,8 +180,8 @@ namespace Teste_ArCore
                 Camera camera = frame.Camera;
 
                 // If not tracking, don't draw 3d objects.
-               // if (camera.TrackingState == TrackingState.Paused)
-                 //   return;
+                // if (camera.TrackingState == TrackingState.Paused)
+                //   return;
 
                 float[] projectionMatrix = new float[16];
                 camera.GetProjectionMatrix(projectionMatrix, 0, 0.1f, 100.0f);
@@ -251,8 +243,19 @@ namespace Teste_ArCore
 
         private void ConfigureSession()
         {
-            Google.AR.Core.Config config = new Google.AR.Core.Config(session);
-            config.SetAugmentedFaceMode(AugmentedFaceMode.Mesh3d);
+            var config = new Google.AR.Core.Config(session);
+            if (!session.IsSupported(config))
+            {
+                Toast.MakeText(this, "This device does not support AR", ToastLength.Long).Show();
+                Finish();
+                return;
+            }
+
+            var cameraConfigFilter = new CameraConfigFilter(session);
+            cameraConfigFilter.SetFacingDirection(CameraConfig.FacingDirection.Back);
+            List<CameraConfig> cameraConfigs = session.GetSupportedCameraConfigs(cameraConfigFilter).ToList();
+            session.CameraConfig = cameraConfigs[0];
+            config.SetFocusMode(FocusMode.Auto);
             session.Configure(config);
         }
     }
